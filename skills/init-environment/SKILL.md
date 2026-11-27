@@ -1,6 +1,6 @@
 ---
 name: 初始化全局环境
-description: 安装或重新配置全局 Agent 环境（全局 AGENTS.md、7 个角色、必需的 skill 与 MCP）。
+description: 安装或重新配置全局 Agent 环境（全局 AGENTS.md、1 个主 agent + 7 个角色、必需的 skill 与 MCP）。
   用户说「装工作流」「配置 OpenChamber」「角色不见了」「怎么装」时使用。
 ---
 
@@ -24,7 +24,7 @@ description: 安装或重新配置全局 Agent 环境（全局 AGENTS.md、7 个
 | # | 装什么 | 装到哪 | 来源 |
 |---|---|---|---|
 | 1 | 全局 AGENTS.md | `~/.config/opencode/AGENTS.md` | `templates/AGENTS.md` |
-| 2 | 7 个角色 | `~/.config/opencode/agents/` | `agents/*.md` |
+| 2 | 1 个主 agent + 7 个角色 | `~/.config/opencode/agents/` | `agents/*.md` |
 | 3 | 10 个 skill | `~/.agents/skills/` 或 `~/.config/opencode/skills/` | `skills/` |
 | 4 | 必需的 MCP | 见第四节 | — |
 
@@ -33,16 +33,35 @@ description: 安装或重新配置全局 Agent 环境（全局 AGENTS.md、7 个
 ### 3.1 装 skill
 
 ```bash
-npx skills add <仓库> -a opencode
+npx skills add https://github.com/jimbosuper/fullstack-workflow.git \
+  --agent opencode --global
 ```
 
-装到哪取决于 `-a` 参数。要跨 agent 用就加多个：`-a opencode -a codex -a zcode`。
+**`-a` 就是 `--agent` 的简写，不是「all」。** 三个参数各管一件事：
 
-### 3.2 装角色（OpenCode 专用）
+| 参数 | 作用 | 不写会怎样 |
+|---|---|---|
+| `--agent opencode` | 装给哪个 agent | 弹交互问你要装给谁 |
+| `--global` | 装进用户目录，全局共用 | **默认装进当前项目**，换仓库就没了 |
+| `--copy` | 复制实体，不建软链 | 跨盘或容器里软链会断 |
+
+要跨 agent 用就重复写：`--agent opencode --agent codex --agent zcode`。
+
+**仓库地址写 HTTPS，不写 `git@github.com:...`。** 后者是 SSH，别人没有你的密钥就拉不下来。
+
+### 3.2 装主 agent 与角色（OpenCode 专用）
 
 ```bash
 cp agents/*.md ~/.config/opencode/agents/
 ```
+
+**`fullstack-workflow.md` 是主 agent（`mode: primary`），另外 7 个是 `mode: subagent`。** 装完在会话里能选到它，和内置 `build`、`plan` 并列。
+
+| 入口 | 级别 | 什么时候选 |
+|---|---|---|
+| `build` | 小 | 单文件改动 |
+| `plan` → `build` | 中 | 多文件、跨模块 |
+| `fullstack-workflow` | 大 | 做项目、改数据结构、需迁移、上生产 |
 
 **装之前必须改两处：**
 
@@ -66,7 +85,9 @@ model: <provider>/<model>#high     # ← 改这里
 | `review-workflow.md` | `code-reviewer.md` |
 | `ops-workflow.md` | `ops-engineer.md` |
 
-**`mode: subagent` 不能删**——不写会被当成主 agent，还抢走本该派给子代理的活。
+**`mode` 不能删也不能写错**：7 个角色必须 `mode: subagent`（不写会被当成主 agent，抢走本该派给子代理的活）；`fullstack-workflow` 必须 `mode: primary`。
+
+**主 agent 没有 `permissions` 段（也就是没有路径禁区），这是故意的。** 它需要对所有目录与内容的读写权限，才能代人做一次性排查、改 `docs/` 结构这类事。**不要给它加路径禁区**——会卡住它自己。代码该由谁写，靠规则约束（见主 agent 正文 §零），不靠 deny。
 
 ### 3.3 装全局 AGENTS.md
 
@@ -76,7 +97,9 @@ cp templates/AGENTS.md ~/.config/opencode/AGENTS.md
 
 **如果已有 AGENTS.md，先看当前内容再决定覆盖还是合并**——直接覆盖会冲掉用户自己写的规则。
 
-**但旧版必须换掉。** 旧版写的是「四道门」、门 3 叫验收、用「已批准」；本仓库 7 个 skill 讲的是「八道门」、门 3 = 架构、门 7 = 验收、统一叫「放行」。**两套门并存，agent 会按旧的那套做事。** 认旧版看两个特征：搜得到「四道门」、搜不到「八道门」。
+**但旧版必须换掉。** 门规则已经搬出了全局：全局只剩 9 节地板，**四道门、六个停点**这套规则在 `agents/fullstack-workflow.md` 里（门 1 设计与产品 / 门 2A 方案 / 门 2B 实现 / 门 3 验证与发布），统一叫「放行」。旧版讲的是**八道门**（门 3 = 架构、门 7 = 验收），更早的讲「四道门」、用「已批准」。**几套门并存，agent 会按旧的那套做事。**
+
+认结构看三条：`grep -c "^## "` 应为 **9**（12 说明门规则还在全局）；`grep -c "任务分级"` 应为 **0**；`grep -c "四道门" ~/.config/opencode/agents/fullstack-workflow.md` 应 ≥ 1。
 
 ## 四、MCP 与 CLI 工具
 
@@ -88,7 +111,7 @@ cp templates/AGENTS.md ~/.config/opencode/AGENTS.md
 /plugin marketplace add obra/superpowers
 
 # 产品角色的提问技能（只装这两个，不装 grill-with-docs）
-npx skills@latest add mattpocock/skills --skill=grill-me --skill=grilling -a opencode
+npx skills@latest add mattpocock/skills --skill=grill-me --skill=grilling --agent opencode --global
 
 # MCP 按需添加
 opencode mcp add context7 --global --url https://mcp.context7.com/mcp
@@ -97,7 +120,7 @@ opencode mcp add gitlab --global --url https://gitlab.example.com/api/v4/mcp
 
 验证：`opencode mcp list` 里已配的 server 显示 `connected`；`ls ~/.agents/skills/` 能看到 `grill-me` 与 `grilling`。
 
-**`grill-with-docs` 不装。** 它会往仓库根写 `GLOSSARY.md`、往 `docs/adr/` 写 ADR，和我们的 `docs/01-产品/04-产品术语表.md` / `docs/03-架构/07-ADR重要决策/` 是两套。两套术语表同时存在比没有更糟。
+**`grill-with-docs` 不装。** 它会往仓库根写 `GLOSSARY.md`、往它自己的 `docs/adr/` 写 ADR，和我们的 `docs/02-产品/05-产品术语表/01-产品术语表.md` / `docs/03-架构/07-ADR重要决策/` 是两套。两套术语表同时存在比没有更糟。
 
 **`grill-me` 的已知限制**：它的 frontmatter 带 `disable-model-invocation: true`，只能由人在会话里手动 `/grill-me` 触发，**子代理自己调不动**。所以 `product-workflow` 的 §4.3 把 grilling 的协议（设计树、frontier、每问带推荐答案、frontier 空才收工）内联进了文档——skill 触发不了也能按文档做。
 
@@ -117,7 +140,7 @@ opencode mcp add gitlab --global --url https://gitlab.example.com/api/v4/mcp
 
 **后端 MCP（Postgres / Sentry / 阿里云）按项目实际技术栈装，用不到就不装。**
 
-**Archify 的 `finalize` 必带 `--out-dir docs/99-tmp/<角色>-<任务>/receipts/`**，否则 4 个 json 收据会落在业务目录里。
+**Archify 的 `finalize` 必带 `--out-dir docs/99-tmp/<角色>-<任务>/03-receipts/`**，否则 4 个 json 收据会落在业务目录里。
 
 ### 4.2 OpenDesign（设计角色出原型）
 
@@ -190,7 +213,7 @@ node ~/.agents/skills/archify/bin/archify.mjs doctor
 
 ```bash
 node ~/.agents/skills/archify/bin/archify.mjs finalize architecture \
-  candidate.json 02-架构图示.html --quality showcase --json
+  candidate.json 03-架构/02-架构图示/01-<短名>_总览_v<版本>.html --quality showcase --json
 ```
 
 **四个校验全过才算交付。** 过了还要看返回里的 `visualReviewRecommendation`——有交叉连线就按它给的 hints 调坐标重跑，最多两轮。**校验过了不等于图好看。**
@@ -201,7 +224,7 @@ node ~/.agents/skills/archify/bin/archify.mjs finalize architecture \
 | 附带 | `.finalize.json` + `.browser-check.json` 交付凭据 |
 | 导出 | PNG / JPEG / WebP / SVG（双主题）/ WebM（带运动） |
 | 运行依赖 | Node.js ≥ 18，无其他依赖 |
-| 输出位置 | 架构角色 → `docs/03-架构/02-架构图示.html`（或 `02-架构图示/`）、`03-状态机/`、`06-ER图/`（后两个恒为目录，文件名带序号，不建 `index.html`）；运维角色 → `docs/06-运维/02-部署拓扑.html`（或 `02-部署拓扑/`） |
+| 输出位置 | 架构角色 → `docs/03-架构/02-架构图示/`、`03-架构/03-状态机/`、`03-架构/06-ER图/`（三者恒为目录，文件名带序号，不建 `index.html`）；运维角色 → `docs/06-运维/02-部署拓扑/` |
 
 **10 种图型**：架构、工作流、时序、数据流、生命周期、ERD、类图、树、时间线、瀑布。
 
@@ -218,14 +241,14 @@ node ~/.agents/skills/archify/bin/archify.mjs finalize architecture \
 
 | 图 | Archify 类型 | 产物 | 谁产出 |
 |---|---|---|---|
-| 架构图示（逻辑架构 + 系统上下文） | `architecture` | `02-架构图示.html` | 架构角色 |
-| 状态机 | `lifecycle` | `03-状态机/1-<实体>.html`（每个实体一张，恒为目录） | 架构角色 |
-| ER 图（全字段表结构） | `erd` | `06-ER图/<N>-<域>.html`（一张 8–12 表） | 架构角色 |
-| 部署拓扑（测试 + 生产，各一个区域 + 私网） | `architecture` + `engineering_profile: deployment-ownership` | `02-部署拓扑.html` | 运维角色 |
+| 架构图示（逻辑架构 + 系统上下文） | `architecture` | `03-架构/02-架构图示/01-<短名>_总览_v<版本>.html` | 架构角色 |
+| 状态机 | `lifecycle` | `03-架构/03-状态机/01-<实体>_状态机_v<版本>.html`（每个实体一张，恒为目录） | 架构角色 |
+| ER 图（全字段表结构） | `erd` | `03-架构/06-ER图/01-<域>_ER图_v<版本>.html`（一张 8–12 表） | 架构角色 |
+| 部署拓扑（测试 + 生产，各一个区域 + 私网） | `architecture` + `engineering_profile: deployment-ownership` | `06-运维/02-部署拓扑/01-<环境>_部署拓扑.html` | 运维角色 |
 
 **一次 `finalize` 只能出一种图。** Archify 的 `meta.views` 是同一张图的聚焦切换（比如只高亮某几个节点），不是把架构图和状态机拼在一起——两者 schema 完全不同。所以架构、状态机、ER 是三个独立文件。
 
-**流程时序图仍然用 Mermaid 写在 `01-系统架构.md` 里。** 它数量多、改得勤、要对着读，做成 HTML 不划算。
+**流程时序图仍然用 Mermaid 写在 `03-架构/01-系统架构/01-*.md` 里。** 它数量多、改得勤、要对着读，做成 HTML 不划算。
 
 ## 五、装完怎么验
 
@@ -234,20 +257,23 @@ node ~/.agents/skills/archify/bin/archify.mjs finalize architecture \
 **1. 角色装上了**
 
 ```bash
-ls ~/.config/opencode/agents/ | wc -l    # 应为 7
+ls ~/.config/opencode/agents/ | wc -l    # 应为 8（1 主 + 7 角色）
+grep -l "^mode: primary" ~/.config/opencode/agents/*.md   # 应有且仅有 fullstack-workflow.md
 ```
 
 **2. skill 装上了**
 
 ```bash
-ls ~/.agents/skills/ | grep -c workflow   # 应为 8（7 角色 + full-workflow）
+ls ~/.agents/skills/ | grep -c workflow   # 应为 8（7 角色 + fullstack-workflow）
+ls ~/.agents/skills/fullstack-workflow/references/   # 应有 questioning.md、project-layout.md、doc-templates/
 ```
 
 **3. 全局 AGENTS.md 在，且是完整版**
 
 ```bash
-grep -c "^## " ~/.config/opencode/AGENTS.md   # 应为 12
-grep -c "八道门" ~/.config/opencode/AGENTS.md # 应 ≥ 1；只有「四道门」的是旧版
+grep -c "^## " ~/.config/opencode/AGENTS.md        # 应为 9（12 说明门规则还在全局）
+grep -c "任务分级" ~/.config/opencode/AGENTS.md     # 应为 0；搬走才算对
+grep -c "四道门" ~/.config/opencode/agents/fullstack-workflow.md  # 应 ≥ 1
 ```
 
 **4. MCP 连上了**
@@ -256,9 +282,11 @@ grep -c "八道门" ~/.config/opencode/AGENTS.md # 应 ≥ 1；只有「四道�
 opencode mcp list | grep connected
 ```
 
-**5. 人能派出去**（这一步机器验不了）
+**5. 人能选到主 agent**（这一步机器验不了）
 
-新开一个会话，说「用产品角色写个 PRD」。**能派出去才算装好。**
+新开一个会话，agent 选 `fullstack-workflow`，说「我要做个 X」。**它能先问清范围、再派设计，才算装好。**
+
+顺手验一次拒收：在那个 agent 里说「改个错别字」，它应该说「这个适合 build」，而不是开三阶段。
 
 ## 六、重装与升级
 

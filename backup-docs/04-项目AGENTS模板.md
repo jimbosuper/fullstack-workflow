@@ -1,8 +1,11 @@
+> **这是备份，与 `templates/project-AGENTS.md` 同源。**
+> **活版本是 `templates/project-AGENTS.md`；这份只是备份，不参与安装。**
+
 # 项目AGENTS模板
 
 ## 一、技术栈
 
-**带版本，不写「最新」。**
+**带详细版本，不写「最新」。**
 
 | 项 | 版本 |
 |---|---|
@@ -19,17 +22,17 @@
 <项目根>/
 ├─ README.md
 ├─ AGENTS.md
-├─ .gitignore         # 必须含 deploy/env/ 与 docs/99-tmp/
+├─ .gitignore         # 必须含 deploy/env/*（放行 .env.example）、docs/99-tmp/、.file-versions/、*.artifact.json、.openchamber/
 ├─ .gitlab-ci.yml
 ├─ src/               # 分层固定，模块名前后端对齐
-├─ test/
+├─ test/              # unit / integration / e2e（各层按需建）
 ├─ deploy/
-└─ docs/              # 结构照抄 docs/99-模板文档/06-项目目录模板.md
+└─ docs/              # 结构见 docs/99-模板文档/project-layout.md（由 init-project 复制）
 ```
 
 ## 三、编码规范
 
-命名、分层、错误处理、目录内部结构、分支模型，全部见 `docs/04-开发/01-代码规范.md`，本文不重复。
+命名、分层、错误处理、目录内部结构、分支模型，全部见 `docs/04-开发/01-代码规范/01-代码规范.md`，本文不重复。
 
 **只补这一处：本项目特有、跟通用规范不一样的地方。** 没有就写「无」。
 
@@ -50,7 +53,7 @@
 | 数据库迁移 | 待补充 |
 | 部署 | 待补充 |
 
-**端口、环境变量这类参数不写在这里**，在 `deploy/env/` 与 `docs/03-架构/04-项目环境规范.md`。
+**端口、环境变量这类参数不写在这里**，在 `deploy/env/` 与 `docs/03-架构/04-项目环境规范/01-项目环境规范.md`。
 
 ## 五、通过标准
 
